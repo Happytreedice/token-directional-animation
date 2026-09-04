@@ -1,0 +1,42 @@
+{
+  "TDA.ModuleName": "Token Directional Animation",
+
+  "TDA.Settings.Enabled.Name": "Enable Directional Animation",
+  "TDA.Settings.Enabled.Hint": "Globally enable or disable directional token animations for this world.",
+  "TDA.Settings.AutoDetect.Name": "Auto-Detect Animation Sources",
+  "TDA.Settings.AutoDetect.Hint": "Automatically look for an index.json or directional files (N.webm, NE.webm, ...) next to the token's texture, even when no source is configured on the token.",
+  "TDA.Settings.DefaultIdleBehavior.Name": "Default Idle Behavior",
+  "TDA.Settings.DefaultIdleBehavior.Hint": "What tokens should display once movement ends, unless overridden per token.",
+  "TDA.Settings.DefaultMirror.Name": "Mirror Missing Directions",
+  "TDA.Settings.DefaultMirror.Hint": "When a source only provides one horizontal side (e.g. E, NE, SE), reuse those textures horizontally flipped for the missing side (W, NW, SW).",
+  "TDA.Settings.PreloadAll.Name": "Preload Directional Textures",
+  "TDA.Settings.PreloadAll.Hint": "Preload every directional texture when a scene loads to avoid flicker on the first turn. Disable on low-memory clients.",
+  "TDA.Settings.DebugLogging.Name": "Debug Logging",
+  "TDA.Settings.DebugLogging.Hint": "Print verbose directional-animation diagnostics to the console.",
+
+  "TDA.IdleBehavior.Default": "Revert to default token image",
+  "TDA.IdleBehavior.KeepLast": "Keep last movement direction",
+  "TDA.IdleBehavior.Custom": "Use custom idle texture",
+
+  "TDA.TokenConfig.TabLabel": "Directions",
+  "TDA.TokenConfig.LegendMain": "Directional Animation",
+  "TDA.TokenConfig.LegendIdle": "Idle Behavior",
+  "TDA.TokenConfig.Enabled.Label": "Enable Directional Animation",
+  "TDA.TokenConfig.Enabled.Hint": "Change this token's texture to face its movement direction.",
+  "TDA.TokenConfig.Source.Label": "Animation Source",
+  "TDA.TokenConfig.Source.Hint": "Path to an index.json, a directory containing N.webm / NE.webm / ..., or a template such as tokens/goblin/{dir}.webm. Leave empty to auto-detect from the token texture.",
+  "TDA.TokenConfig.Source.Placeholder": "auto-detect from token texture",
+  "TDA.TokenConfig.IdleBehavior.Label": "Idle Behavior",
+  "TDA.TokenConfig.IdleBehavior.Hint": "What this token displays when it stops moving.",
+  "TDA.TokenConfig.IdleBehavior.Global": "Use world default",
+  "TDA.TokenConfig.IdleSource.Label": "Idle Texture",
+  "TDA.TokenConfig.IdleSource.Hint": "Texture shown while idle when Idle Behavior is set to \"custom\". If the animation source defines an idle/token entry, it is used as a fallback.",
+  "TDA.TokenConfig.Mirror.Label": "Mirror Missing Directions",
+  "TDA.TokenConfig.Mirror.Hint": "Horizontally flip E / NE / SE textures to cover W / NW / SW (or vice versa) when only five directions are provided.",
+  "TDA.TokenConfig.Mirror.Global": "Use world default",
+  "TDA.TokenConfig.Mirror.Yes": "Yes",
+  "TDA.TokenConfig.Mirror.No": "No",
+
+  "TDA.Notifications.SourceNotResolved": "Token Directional Animation: could not resolve directional textures from \"{source}\".",
+  "TDA.Notifications.IndexParseError": "Token Directional Animation: failed to parse index.json at \"{path}\"."
+}

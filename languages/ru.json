@@ -1,0 +1,42 @@
+{
+  "TDA.ModuleName": "Направленная анимация токенов",
+
+  "TDA.Settings.Enabled.Name": "Включить направленную анимацию",
+  "TDA.Settings.Enabled.Hint": "Глобально включает или отключает направленную анимацию токенов в этом мире.",
+  "TDA.Settings.AutoDetect.Name": "Автоопределение источников анимации",
+  "TDA.Settings.AutoDetect.Hint": "Автоматически искать index.json или файлы направлений (N.webm, NE.webm, ...) рядом с текстурой токена, даже если источник не задан в настройках токена.",
+  "TDA.Settings.DefaultIdleBehavior.Name": "Поведение в покое по умолчанию",
+  "TDA.Settings.DefaultIdleBehavior.Hint": "Что отображают токены после завершения движения, если не переопределено для конкретного токена.",
+  "TDA.Settings.DefaultMirror.Name": "Зеркалировать недостающие направления",
+  "TDA.Settings.DefaultMirror.Hint": "Если источник содержит только одну горизонтальную сторону (например E, NE, SE), использовать эти текстуры с горизонтальным отражением для недостающей стороны (W, NW, SW).",
+  "TDA.Settings.PreloadAll.Name": "Предзагрузка текстур направлений",
+  "TDA.Settings.PreloadAll.Hint": "Загружать все текстуры направлений при загрузке сцены, чтобы избежать мерцания при первом повороте. Отключите на клиентах с малым объёмом памяти.",
+  "TDA.Settings.DebugLogging.Name": "Отладочные сообщения",
+  "TDA.Settings.DebugLogging.Hint": "Выводить подробную диагностику направленной анимации в консоль.",
+
+  "TDA.IdleBehavior.Default": "Вернуть исходное изображение токена",
+  "TDA.IdleBehavior.KeepLast": "Сохранить последнее направление движения",
+  "TDA.IdleBehavior.Custom": "Использовать отдельную текстуру покоя",
+
+  "TDA.TokenConfig.TabLabel": "Направления",
+  "TDA.TokenConfig.LegendMain": "Направленная анимация",
+  "TDA.TokenConfig.LegendIdle": "Поведение в покое",
+  "TDA.TokenConfig.Enabled.Label": "Включить направленную анимацию",
+  "TDA.TokenConfig.Enabled.Hint": "Менять текстуру токена в соответствии с направлением его движения.",
+  "TDA.TokenConfig.Source.Label": "Источник анимации",
+  "TDA.TokenConfig.Source.Hint": "Путь к index.json, к каталогу с файлами N.webm / NE.webm / ..., либо шаблон вида tokens/goblin/{dir}.webm. Оставьте пустым для автоопределения по текстуре токена.",
+  "TDA.TokenConfig.Source.Placeholder": "автоопределение по текстуре токена",
+  "TDA.TokenConfig.IdleBehavior.Label": "Поведение в покое",
+  "TDA.TokenConfig.IdleBehavior.Hint": "Что отображает токен, когда он останавливается.",
+  "TDA.TokenConfig.IdleBehavior.Global": "Как в настройках мира",
+  "TDA.TokenConfig.IdleSource.Label": "Текстура покоя",
+  "TDA.TokenConfig.IdleSource.Hint": "Текстура, отображаемая в покое, если выбран режим «отдельная текстура». Если источник анимации содержит запись idle/token, она используется как запасной вариант.",
+  "TDA.TokenConfig.Mirror.Label": "Зеркалировать недостающие направления",
+  "TDA.TokenConfig.Mirror.Hint": "Горизонтально отражать текстуры E / NE / SE для направлений W / NW / SW (и наоборот), если заданы только пять направлений.",
+  "TDA.TokenConfig.Mirror.Global": "Как в настройках мира",
+  "TDA.TokenConfig.Mirror.Yes": "Да",
+  "TDA.TokenConfig.Mirror.No": "Нет",
+
+  "TDA.Notifications.SourceNotResolved": "Направленная анимация токенов: не удалось получить текстуры направлений из «{source}».",
+  "TDA.Notifications.IndexParseError": "Направленная анимация токенов: не удалось разобрать index.json по пути «{path}»."
+}

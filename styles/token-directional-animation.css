@@ -1,0 +1,34 @@
+/* Token Directional Animation — Token Configuration tab styling */
+
+.tda-tab .form-group label {
+  flex: 2;
+}
+
+.tda-tab .form-group .hint {
+  margin: 0.25rem 0 0;
+  font-size: var(--font-size-12, 0.75rem);
+  opacity: 0.8;
+}
+
+.tda-tab fieldset {
+  margin-bottom: 0.5rem;
+}
+
+.tda-tab fieldset legend {
+  font-weight: bold;
+}
+
+.tda-tab .tda-source-row {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.tda-tab .tda-source-row file-picker,
+.tda-tab .tda-source-row input[type="text"] {
+  flex: 1;
+}
+
+.tda-tab .tda-idle-source[hidden] {
+  display: none;
+}
