@@ -45,7 +45,7 @@ function registerSettings() {
       [IDLE_BEHAVIOR.KEEP]: "TDA.IdleBehavior.KeepLast",
       [IDLE_BEHAVIOR.CUSTOM]: "TDA.IdleBehavior.Custom"
     },
-    default: IDLE_BEHAVIOR.DEFAULT
+    default: IDLE_BEHAVIOR.KEEP
   });
 
   game.settings.register(MODULE_ID, SETTINGS.DEFAULT_MIRROR, {
@@ -63,7 +63,7 @@ function registerSettings() {
     scope: "client",
     config: true,
     type: Boolean,
-    default: true
+    default: false
   });
 
   game.settings.register(MODULE_ID, SETTINGS.DEBUG, {

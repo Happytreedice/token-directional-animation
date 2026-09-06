@@ -187,6 +187,28 @@ export async function getProfile(doc) {
     if ( cfg.explicit ) return null; // an explicit source that fails should not silently auto-detect
   }
 
+  // Fast path: anim metadata in token or actor flags (e.g. dnd-icewind-dale-pc-game)
+  const animFlags = doc.flags?.["dnd-icewind-dale-pc-game"]?.anim
+    || doc.flags?.["dnd-icewind-dale-pack"]?.anim
+    || doc.actor?.flags?.["dnd-icewind-dale-pc-game"]?.anim
+    || doc.actor?.flags?.["dnd-icewind-dale-pack"]?.anim;
+  if ( animFlags?.dirs ) {
+    const animKey = `flags:${animFlags.folder || animFlags.bam || doc.name || doc.id}`;
+    if ( !profileCache.has(animKey) ) {
+      const entries = {};
+      for ( const [rawDir, dirData] of Object.entries(animFlags.dirs) ) {
+        const direction = rawDir.toUpperCase();
+        if ( !DIRECTIONS.includes(direction) ) continue;
+        const src = dirData.webm || dirData.src || (typeof dirData === "string" ? dirData : null);
+        if ( src ) entries[direction] = { src };
+      }
+      const idle = animFlags.static || doc.texture?.src || null;
+      profileCache.set(animKey, Promise.resolve(foundry.utils.isEmpty(entries) ? null : { key: animKey, entries, idle }));
+    }
+    const profile = await profileCache.get(animKey);
+    if ( profile ) return profile;
+  }
+
   if ( !cfg.autoDetect && !cfg.explicit ) return null;
   const texture = cleanPath(doc.texture?.src ?? "");
   if ( !texture ) return null;
@@ -333,7 +355,11 @@ async function profileFromDirectory(dir, key, extensions=TEXTURE_EXTENSIONS) {
 /* -------------------------------------------- */
 
 /**
- * Preload every texture referenced by a profile into Foundry's texture cache.
+ * Preload textures referenced by a profile into Foundry's texture cache.
+ * Note: Video textures (.webm, etc.) allocate internal WebMediaPlayer instances
+ * in Chromium, which enforces a hard ceiling of 1024 instances per renderer (crbug.com/1144736).
+ * Preloading video textures in bulk is avoided to prevent exhausting the browser pool.
+ * Video textures are loaded on demand during movement in setMeshTexture.
  * @param {object} profile
  * @returns {Promise<void>}
  */
@@ -341,8 +367,10 @@ export async function preloadProfile(profile) {
   if ( !profile ) return;
   const sources = new Set(Object.values(profile.entries).map(e => e.src));
   if ( profile.idle ) sources.add(profile.idle);
-  await Promise.allSettled([...sources].map(src => loadTex(src)));
-  debug(`Preloaded ${sources.size} textures for profile "${profile.key}"`);
+  const nonVideoSources = [...sources].filter(src => !/\.(webm|mp4|m4v|ogv)$/i.test(src));
+  if ( nonVideoSources.length ) {
+    await Promise.allSettled(nonVideoSources.map(src => loadTex(src)));
+  }
 }
 
 /** Resolve and preload the profile of a single token. Fire-and-forget safe. */
@@ -359,7 +387,14 @@ export async function preloadFor(doc) {
 export async function preloadScene() {
   if ( !canvas.scene || !game.settings.get(MODULE_ID, SETTINGS.PRELOAD_ALL) ) return;
   const candidates = canvas.scene.tokens.filter(isCandidate);
-  await Promise.allSettled(candidates.map(preloadFor));
+  const seenKeys = new Set();
+  for ( const doc of candidates ) {
+    const profile = await getProfile(doc);
+    if ( profile && !seenKeys.has(profile.key) ) {
+      seenKeys.add(profile.key);
+      await preloadProfile(profile);
+    }
+  }
 }
 
 /* -------------------------------------------- */
@@ -386,7 +421,11 @@ async function setMeshTexture(token, src, mirrored, { play=true }={}) {
 
   // Manage webm/video playback state
   try {
+    const prevVideo = game.video.getVideoSource(token.mesh.texture);
     const video = game.video.getVideoSource(texture);
+    if ( prevVideo && prevVideo !== video && !prevVideo.paused ) {
+      prevVideo.pause();
+    }
     if ( video ) {
       video.loop = true;
       video.muted = true;
@@ -514,7 +553,12 @@ export async function applyIdle(token) {
     return;
   }
 
-  // Animation must continue playing in the facing direction upon movement completion
+  if ( cfg.idleBehavior === IDLE_BEHAVIOR.DEFAULT ) {
+    await restoreDefault(token);
+    return;
+  }
+
+  // IDLE_BEHAVIOR.KEEP: Animation continues playing in the facing direction upon movement completion
   if ( token.mesh?.texture ) {
     const video = game.video.getVideoSource(token.mesh.texture);
     if ( video ) {
