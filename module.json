@@ -2,7 +2,7 @@
   "id": "token-directional-animation",
   "title": "Token Directional Animation",
   "description": "Changes a token's texture based on its movement direction across 8 octants (N, NE, E, SE, S, SW, W, NW), with per-waypoint facing, index.json and directory/template sources, 5-direction mirroring, idle handling and texture preloading.",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "compatibility": {
     "minimum": "12",
     "verified": "14"
@@ -22,7 +22,7 @@
   "license": "LICENSE",
   "url": "https://github.com/Happytreedice/token-directional-animation",
   "manifest": "https://github.com/Happytreedice/token-directional-animation/releases/latest/download/module.json",
-  "download": "https://github.com/Happytreedice/token-directional-animation/releases/download/v.0.1.5/token-directional-animation.zip",
+  "download": "https://github.com/Happytreedice/token-directional-animation/releases/download/v0.1.6/token-directional-animation.zip",
   "esmodules": [
     "scripts/main.mjs"
   ],
