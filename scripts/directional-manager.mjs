@@ -58,14 +58,26 @@ const probeCache = new Map();
  */
 const tokenStates = new Map();
 
-/** Drop all per-token state (scene teardown). */
+/** Drop all per-token state and caches (scene teardown). */
 export function clearAllStates() {
   tokenStates.clear();
+  profileCache.clear();
+  probeCache.clear();
 }
 
-/** Drop the state for a single token (deletion). */
+/** Drop the state for a single token (deletion) and prune orphaned caches. */
 export function clearState(tokenId) {
   tokenStates.delete(tokenId);
+  if ( canvas.scene?.tokens ) {
+    const activeKeys = new Set();
+    for ( const doc of canvas.scene.tokens ) {
+      if ( doc.id === tokenId ) continue;
+      for ( const k of sourceKeysFor(doc) ) activeKeys.add(k);
+    }
+    for ( const k of profileCache.keys() ) {
+      if ( !activeKeys.has(k) ) profileCache.delete(k);
+    }
+  }
 }
 
 /**
@@ -170,12 +182,34 @@ function sourceKeysFor(doc) {
   return keys;
 }
 
+/** Check whether the active scene currently has Isometric Perspective enabled. */
+function isSceneIsometric() {
+  const ISO = "isometric-perspective";
+  const mod = game.modules.get(ISO);
+  if ( !mod?.active ) return false;
+  const worldFlag = game.settings.settings.has(`${ISO}.worldIsometricFlag`) && game.settings.get(ISO, "worldIsometricFlag");
+  if ( !worldFlag ) return false;
+  return Boolean(canvas.scene?.getFlag(ISO, "isometricEnabled"));
+}
+
 /**
  * Resolve (and cache) the directional profile for a token.
  * @param {TokenDocument} doc
  * @returns {Promise<object|null>}
  */
 export async function getProfile(doc) {
+  if ( !doc ) return null;
+  // Only cache animations for tokens present on the active scene
+  if ( canvas.scene ) {
+    const isTokenDoc = doc.documentName === "Token" || (doc.parent?.documentName === "Scene");
+    if ( isTokenDoc ) {
+      if ( doc.parent && doc.parent !== canvas.scene ) return null;
+      if ( !canvas.scene.tokens.has(doc.id) ) return null;
+    } else if ( doc.documentName === "Actor" ) {
+      const onScene = canvas.scene.tokens.some(t => t.actorId === doc.id);
+      if ( !onScene ) return null;
+    }
+  }
   const cfg = getEffectiveConfig(doc);
   if ( !cfg.enabled ) return null;
 
@@ -250,15 +284,22 @@ async function autoDetect(texture, key) {
   const dir = dirname(texture);
   if ( !dir ) return null;
 
-  const index = await profileFromIndex(`${dir}/index.json`, key, { silent: true });
-  if ( index ) return index;
-
   const base = basenameNoExt(texture).toUpperCase();
   const looksDirectional = DIRECTIONS.includes(base);
   const inAnimDir = /(^|\/)anim$/i.test(dir);
   if ( !looksDirectional && !inAnimDir ) return null;
 
-  const preferred = [extname(texture), ...TEXTURE_EXTENSIONS].filter(Boolean);
+  const ext = extname(texture);
+  // If the texture is already a known directional file, resolve directory templates directly without HTTP probe
+  if ( looksDirectional && ext ) {
+    const profile = await profileFromTemplate(`${dir}/{dir}.${ext}`, key);
+    if ( profile ) return profile;
+  }
+
+  const index = await profileFromIndex(`${dir}/index.json`, key, { silent: true });
+  if ( index ) return index;
+
+  const preferred = [ext, ...TEXTURE_EXTENSIONS].filter(Boolean);
   return profileFromDirectory(dir, key, [...new Set(preferred)]);
 }
 
@@ -271,27 +312,30 @@ async function autoDetect(texture, key) {
  * @returns {Promise<object|null>}
  */
 async function profileFromIndex(path, key, { silent=true }={}) {
-  if ( await probeExists(path) === false ) return null;
-  const data = await fetchJson(path);
-  if ( !data || typeof data !== "object" ) {
+  try {
+    const data = await fetchJson(path);
+    if ( !data || typeof data !== "object" ) {
+      return null;
+    }
+    const indexDir = dirname(path);
+    const dirs = (data.dirs && typeof data.dirs === "object") ? data.dirs : data;
+    const entries = {};
+    for ( const [rawDir, rawEntry] of Object.entries(dirs) ) {
+      const direction = rawDir.toUpperCase();
+      if ( !DIRECTIONS.includes(direction) ) continue;
+      const rawPath = entryToPath(rawEntry);
+      if ( !rawPath ) continue;
+      const src = await resolveIndexPath(rawPath, indexDir);
+      if ( src ) entries[direction] = { src };
+    }
+    if ( foundry.utils.isEmpty(entries) ) return null;
+    const rawIdle = entryToPath(data.idle ?? data.token ?? null);
+    const idle = rawIdle ? await resolveIndexPath(rawIdle, indexDir) : null;
+    debug(`Resolved index.json profile "${path}"`, entries);
+    return { key, entries, idle };
+  } catch {
     return null;
   }
-  const indexDir = dirname(path);
-  const dirs = (data.dirs && typeof data.dirs === "object") ? data.dirs : data;
-  const entries = {};
-  for ( const [rawDir, rawEntry] of Object.entries(dirs) ) {
-    const direction = rawDir.toUpperCase();
-    if ( !DIRECTIONS.includes(direction) ) continue;
-    const rawPath = entryToPath(rawEntry);
-    if ( !rawPath ) continue;
-    const src = await resolveIndexPath(rawPath, indexDir);
-    if ( src ) entries[direction] = { src };
-  }
-  if ( foundry.utils.isEmpty(entries) ) return null;
-  const rawIdle = entryToPath(data.idle ?? data.token ?? null);
-  const idle = rawIdle ? await resolveIndexPath(rawIdle, indexDir) : null;
-  debug(`Resolved index.json profile "${path}"`, entries);
-  return { key, entries, idle };
 }
 
 /**
@@ -378,8 +422,8 @@ export async function preloadFor(doc) {
   try {
     const profile = await getProfile(doc);
     if ( profile ) await preloadProfile(profile);
-  } catch(err) {
-    warn(`Preload failed for token "${doc?.name}":`, err);
+  } catch {
+    // Silently ignore tokens without directional animation or missing assets
   }
 }
 
@@ -468,8 +512,39 @@ async function setMeshTexture(token, src, mirrored, { play=true }={}) {
   token.texture = texture;
   token.mesh.texture = texture;
   token.renderFlags.set({ refreshMesh: true, refreshSize: true });
+  if ( !isSceneIsometric() ) {
+    normalizeMeshTransform(token);
+  }
   applyMirror(token, mirrored);
   return true;
+}
+
+/**
+ * Normalizes mesh transforms on non-isometric scenes.
+ * Resets residual skew, inverse rotation, and non-uniform isometric scaling
+ * left behind by isometric modules or scene transitions.
+ * @param {Token} token
+ */
+export function normalizeMeshTransform(token) {
+  if ( !token?.mesh || isSceneIsometric() ) return;
+  const mesh = token.mesh;
+  if ( mesh.skew && (mesh.skew.x !== 0 || mesh.skew.y !== 0) ) {
+    mesh.skew.set(0, 0);
+  }
+  const expectedRotation = token.document.lockRotation ? 0 : Math.toRadians(token.document.rotation || 0);
+  if ( Math.abs(mesh.rotation - expectedRotation) > 0.001 ) {
+    mesh.rotation = expectedRotation;
+  }
+  if ( mesh.anchor && (mesh.anchor.x !== 0.5 || mesh.anchor.y !== 0.5) ) {
+    mesh.anchor.set(0.5, 0.5);
+  }
+  if ( mesh.texture?.valid && typeof token.getSize === "function" && typeof mesh.resize === "function" ) {
+    const { width, height } = token.getSize();
+    const fit = token.document.texture?.fit || "contain";
+    const scaleX = token.document.texture?.scaleX || 1;
+    const scaleY = token.document.texture?.scaleY || 1;
+    mesh.resize(width, height, { fit, scaleX, scaleY });
+  }
 }
 
 /**
@@ -601,6 +676,9 @@ export function handleDraw(token) {
  * @param {Token} token
  */
 export function handleRefresh(token) {
+  if ( !isSceneIsometric() ) {
+    normalizeMeshTransform(token);
+  }
   applyMirror(token);
   const state = tokenStates.get(token.id);
   if ( state?.active && token.mesh?.texture ) {
